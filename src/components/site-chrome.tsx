@@ -19,7 +19,7 @@ export function Header() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+    <header className="sticky top-0 z-40 bg-navy-900 text-white shadow-card">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="text-lg font-semibold">
           Fahrkompetenz
@@ -30,7 +30,7 @@ export function Header() {
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+              className="text-sm font-medium text-navy-100 transition-colors hover:text-accent"
             >
               {link.label}
             </Link>
@@ -40,7 +40,7 @@ export function Header() {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="rounded-md p-2 text-zinc-700 hover:bg-zinc-100 md:hidden dark:text-zinc-300 dark:hover:bg-zinc-800"
+          className="rounded-md p-2 text-white transition-colors hover:bg-navy-800 md:hidden"
           aria-expanded={open}
           aria-label="Menü öffnen"
         >
@@ -57,14 +57,14 @@ export function Header() {
       </div>
 
       {open && (
-        <nav className="border-t border-zinc-200 md:hidden dark:border-zinc-800">
+        <nav className="border-t border-navy-800 md:hidden">
           <div className="mx-auto max-w-6xl space-y-1 px-4 py-4 sm:px-6">
             {NAV_LINKS.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 onClick={() => setOpen(false)}
-                className="block rounded-lg px-3 py-2.5 text-base font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                className="block rounded-lg px-3 py-2.5 text-base font-medium text-navy-100 transition-colors hover:bg-navy-800 hover:text-accent"
               >
                 {link.label}
               </Link>
@@ -78,11 +78,11 @@ export function Header() {
 
 export function Footer() {
   return (
-    <footer className="border-t border-zinc-200 dark:border-zinc-800">
+    <footer className="border-t border-navy-200 bg-surface">
       <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:px-6 md:flex-row md:justify-between">
         <div>
-          <p className="font-semibold">Fahrkompetenz</p>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="font-semibold text-primary">Fahrkompetenz</p>
+          <p className="mt-1 text-sm text-navy-500">
             Lernplattform für Fahrschulkompetenzen.
           </p>
         </div>
@@ -94,7 +94,7 @@ export function Footer() {
               href={link.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+              className="text-sm text-navy-500 transition-colors hover:text-accent"
             >
               {link.label}
             </a>
@@ -102,9 +102,9 @@ export function Footer() {
         </div>
       </div>
 
-      <div className="border-t border-zinc-200 dark:border-zinc-800">
+      <div className="border-t border-navy-200">
         <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6">
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="text-sm text-navy-400">
             © 2026 Fahrkompetenz – Open Source.
           </p>
         </div>
