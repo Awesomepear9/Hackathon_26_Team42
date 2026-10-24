@@ -1,5 +1,6 @@
 import { LevelCard } from "@/components/levelCard";
 import { GoalCard } from "@/components/goalCard";
+import { TotalRidesCard } from "@/components/totalRidesCard";
 
 export default function HomePage() {
   return (
@@ -10,10 +11,13 @@ export default function HomePage() {
         progressPercentage={90}
         remainingRides={2}
       />
-      <div className="pt-2">
+      <div className="grid grid-cols-2 gap-2 pt-2">
         <GoalCard
           totalDistance={1000}
           currentDistance={420}
+        />
+        <TotalRidesCard
+          totalRides={12}
         />
       </div>
     </div>
