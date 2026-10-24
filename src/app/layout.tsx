@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Footer, Header } from "@/components/site-chrome";
+import { ThemeApplier } from "@/components/theme-applier";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -20,19 +21,6 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-const themeScript = `
-  (function () {
-    try {
-      var stored = localStorage.getItem("theme");
-      var dark = stored === "dark" ||
-        (stored === null &&
-          window.matchMedia("(prefers-color-scheme: dark)").matches);
-      if (dark) document.documentElement.classList.add("dark");
-      document.documentElement.style.colorScheme = dark ? "dark" : "light";
-    } catch (e) {}
-  })();
-`;
-
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
@@ -41,9 +29,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        {/* eslint-disable-next-line @next/next/no-sync-scripts -- muss vor Hydration synchron laufen (FOUC-Schutz) */}
+        <script src="/theme-init.js" />
       </head>
       <body className="flex min-h-full flex-col bg-surface font-sans text-primary transition-colors dark:bg-navy-950 dark:text-navy-100">
+        <ThemeApplier />
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2 focus:font-semibold focus:text-navy-900"

@@ -36,7 +36,7 @@ function ThemeToggle() {
       onClick={toggle}
       aria-pressed={dark}
       aria-label={dark ? "Helles Design aktivieren" : "Dunkles Design aktivieren"}
-      className="rounded-md p-2 text-navy-100 transition-colors hover:bg-navy-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      className="rounded-md p-2 text-navy-700 transition-colors hover:bg-navy-100 hover:text-navy-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-800 dark:text-navy-100 dark:hover:bg-navy-800 dark:hover:text-white dark:focus-visible:ring-accent"
     >
       {dark ? (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
@@ -56,21 +56,21 @@ export function Header() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 bg-navy-900 text-white shadow-card dark:bg-navy-950">
+    <header className="sticky top-0 z-40 border-b border-navy-200 bg-surface text-primary shadow-card transition-colors dark:border-navy-800 dark:bg-navy-950 dark:text-white">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-4 sm:px-6">
         <Link
           href="/"
-          className="text-lg font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset"
+          className="text-lg font-semibold transition-colors hover:text-cyan-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-800 focus-visible:ring-inset dark:hover:text-accent dark:focus-visible:ring-accent"
         >
           Fahrkompetenz
         </Link>
 
-        <nav className="hidden items-center gap-6 md:flex">
+        <nav className="hidden items-center gap-6 md:flex" aria-label="Hauptnavigation">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm font-medium text-navy-100 transition-colors hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset"
+              className="text-sm font-medium text-navy-700 transition-colors hover:text-cyan-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-800 focus-visible:ring-inset dark:text-navy-100 dark:hover:text-accent dark:focus-visible:ring-accent"
             >
               {link.label}
             </Link>
@@ -82,7 +82,7 @@ export function Header() {
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="rounded-md p-2 text-white transition-colors hover:bg-navy-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent md:hidden"
+            className="rounded-md p-2 text-navy-700 transition-colors hover:bg-navy-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-800 md:hidden dark:text-navy-100 dark:hover:bg-navy-800 dark:focus-visible:ring-accent"
             aria-expanded={open}
             aria-controls="mobile-menu"
             aria-label={open ? "Menü schließen" : "Menü öffnen"}
@@ -103,7 +103,7 @@ export function Header() {
       {open && (
         <nav
           id="mobile-menu"
-          className="border-t border-navy-800 md:hidden"
+          className="border-t border-navy-200 dark:border-navy-800 md:hidden"
           aria-label="Mobile Navigation"
         >
           <div className="mx-auto max-w-6xl space-y-1 px-4 py-4 sm:px-6">
@@ -112,7 +112,7 @@ export function Header() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setOpen(false)}
-                className="block rounded-lg px-3 py-2.5 text-base font-medium text-navy-100 transition-colors hover:bg-navy-800 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                className="block rounded-lg px-3 py-2.5 text-base font-medium text-navy-700 transition-colors hover:bg-navy-100 hover:text-cyan-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-800 dark:text-navy-100 dark:hover:bg-navy-800 dark:hover:text-accent dark:focus-visible:ring-accent"
               >
                 {link.label}
               </Link>
@@ -126,7 +126,7 @@ export function Header() {
 
 export function Footer() {
   return (
-    <footer className="border-t border-navy-200 bg-surface dark:border-navy-800 dark:bg-navy-950">
+    <footer className="border-t border-navy-200 bg-surface transition-colors dark:border-navy-800 dark:bg-navy-950">
       <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:px-6 md:flex-row md:justify-between">
         <div>
           <p className="font-semibold text-primary dark:text-white">Fahrkompetenz</p>
@@ -135,14 +135,14 @@ export function Footer() {
           </p>
         </div>
 
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2" aria-label="Social Links">
           {SOCIAL_LINKS.map((link) => (
             <a
               key={link.href}
               href={link.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-navy-700 underline-offset-2 transition-colors hover:text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-800 dark:text-navy-200 dark:focus-visible:ring-accent dark:hover:text-accent"
+              className="text-sm text-navy-700 underline-offset-2 transition-colors hover:text-cyan-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-800 dark:text-navy-200 dark:hover:text-accent dark:focus-visible:ring-accent"
             >
               {link.label}
             </a>
