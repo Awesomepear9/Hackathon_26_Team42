@@ -1,2 +1,4 @@
 @import "tailwindcss";
 @import "./digifl-theme.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
