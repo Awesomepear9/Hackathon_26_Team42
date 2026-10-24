@@ -1,6 +1,6 @@
 export default function HomePage() {
   return (
-    <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+    <div className="mx-auto max-w-6xl px-4 pb-16 pt-24 sm:px-6 md:pt-28">
       <h1 className="text-3xl font-bold sm:text-4xl">
         Fahrschulkompetenzen lernen.
       </h1>
