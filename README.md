@@ -33,6 +33,8 @@ Das Praxismodul lässt sich auch allein entwickeln: `npm run praxismodul:dev` (D
 - `session.ts` – Spielsitzung: Züge, Blinker, Fragen, Fehlerpunkte, Ende des Runs
 - `fragen.ts` – die 100 Fragen des Teams plus Parser, `catalog.ts` – Katalogbereiche und Themen-Pools
 
+Die Rust-Spiellogik für das spätere WebAssembly-Modul liegt in [`engine/`](engine) (noch nicht angebunden).
+
 ## Logo
 
 Einzige Logo-Datei ist `public/digifl-logo.svg` (aus `digi_fl.svg`) mit den Ausschnitten `#logo`,
