@@ -1,30 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { usePathname } from "next/navigation";
+import { useState, useSyncExternalStore } from "react";
+import { Logo } from "./logo";
 
 const NAV_LINKS = [
   { href: "/", label: "Start" },
-  { href: "/lernen", label: "Lernen" },
-  { href: "/pruefung", label: "Prüfung" },
-  { href: "/karte", label: "Karte" },
+  { href: "/uebersicht", label: "Übersicht" },
+  { href: "/praxismodul", label: "Praxismodul" },
 ];
 
-const SOCIAL_LINKS = [
-  { href: "https://github.com", label: "GitHub" },
-  { href: "https://opencollective.com", label: "Open Collective" },
-];
+const PLAY_LINK = { href: "/spiel", label: "Jetzt spielen" };
+
+const focusRing =
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-800 dark:focus-visible:ring-accent";
 
 function ThemeToggle() {
-  const [dark, setDark] = useState(() =>
-    typeof document !== "undefined"
-      ? document.documentElement.classList.contains("dark")
-      : false,
+  // Server und Hydration rendern hell, danach gilt die .dark-Klasse von theme-init.js
+  const dark = useSyncExternalStore(
+    (cb) => {
+      const observer = new MutationObserver(cb);
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+      return () => observer.disconnect();
+    },
+    () => document.documentElement.classList.contains("dark"),
+    () => false,
   );
 
   const toggle = () => {
     const next = !dark;
-    setDark(next);
     localStorage.setItem("theme", next ? "dark" : "light");
     document.documentElement.classList.toggle("dark", next);
     document.documentElement.style.colorScheme = next ? "dark" : "light";
@@ -54,31 +59,48 @@ function ThemeToggle() {
 
 export function Header() {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
+  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
   return (
-    <header className="sticky top-0 z-40 border-b border-navy-200 bg-surface text-primary shadow-card transition-colors dark:border-navy-800 dark:bg-navy-950 dark:text-white">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-4 sm:px-6">
-        <Link
-          href="/"
-          className="text-lg font-semibold transition-colors hover:text-cyan-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-800 focus-visible:ring-inset dark:hover:text-accent dark:focus-visible:ring-accent"
-        >
-          Fahrkompetenz
+    <header className="sticky top-0 z-40 border-b border-navy-200 bg-white/90 text-primary backdrop-blur transition-colors dark:border-navy-800 dark:bg-navy-950/90 dark:text-white">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:px-6">
+        <Link href="/" className={`rounded-md ${focusRing}`} aria-label="DigiFL – zur Startseite">
+          <Logo className="h-8" alt="" />
         </Link>
 
-        <nav className="hidden items-center gap-6 md:flex" aria-label="Hauptnavigation">
+        <nav className="hidden items-center gap-1 md:flex" aria-label="Hauptnavigation">
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm font-medium text-navy-700 transition-colors hover:text-cyan-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-800 focus-visible:ring-inset dark:text-navy-100 dark:hover:text-accent dark:focus-visible:ring-accent"
+              aria-current={isActive(link.href) ? "page" : undefined}
+              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${focusRing} ${
+                isActive(link.href)
+                  ? "bg-navy-50 font-semibold text-primary dark:bg-navy-800 dark:text-white"
+                  : "text-navy-600 hover:text-cyan-800 dark:text-navy-200 dark:hover:text-accent"
+              }`}
             >
               {link.label}
             </Link>
           ))}
+          <Link
+            href={PLAY_LINK.href}
+            aria-current={isActive(PLAY_LINK.href) ? "page" : undefined}
+            className={`ml-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-navy-700 dark:bg-accent dark:text-navy-900 dark:hover:bg-cyan-400 ${focusRing}`}
+          >
+            {PLAY_LINK.label}
+          </Link>
         </nav>
 
         <div className="flex items-center gap-1">
           <ThemeToggle />
+          <Link
+            href={PLAY_LINK.href}
+            className={`rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-white md:hidden dark:bg-accent dark:text-navy-900 ${focusRing}`}
+          >
+            Spielen
+          </Link>
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
@@ -106,13 +128,16 @@ export function Header() {
           className="border-t border-navy-200 dark:border-navy-800 md:hidden"
           aria-label="Mobile Navigation"
         >
-          <div className="mx-auto max-w-6xl space-y-1 px-4 py-4 sm:px-6">
-            {NAV_LINKS.map((link) => (
+          <div className="mx-auto max-w-7xl space-y-1 px-4 py-4 sm:px-6">
+            {[...NAV_LINKS, PLAY_LINK].map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 onClick={() => setOpen(false)}
-                className="block rounded-lg px-3 py-2.5 text-base font-medium text-navy-700 transition-colors hover:bg-navy-100 hover:text-cyan-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-800 dark:text-navy-100 dark:hover:bg-navy-800 dark:hover:text-accent dark:focus-visible:ring-accent"
+                aria-current={isActive(link.href) ? "page" : undefined}
+                className={`block rounded-lg px-3 py-2.5 text-base font-medium transition-colors hover:bg-navy-100 hover:text-cyan-800 dark:hover:bg-navy-800 dark:hover:text-accent ${focusRing} ${
+                  isActive(link.href) ? "bg-navy-50 text-primary dark:bg-navy-800 dark:text-white" : "text-navy-700 dark:text-navy-100"
+                }`}
               >
                 {link.label}
               </Link>
@@ -127,33 +152,32 @@ export function Header() {
 export function Footer() {
   return (
     <footer className="border-t border-navy-200 bg-surface transition-colors dark:border-navy-800 dark:bg-navy-950">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-10 sm:px-6 md:flex-row md:justify-between">
-        <div>
-          <p className="font-semibold text-primary dark:text-white">Fahrkompetenz</p>
+      <div className="mx-auto flex max-w-7xl flex-col gap-8 px-4 py-10 sm:px-6 md:flex-row md:justify-between">
+        <div className="max-w-md">
+          <Logo className="h-9" alt="DigiFL – Digitaler Fahrlehrer" />
+          <p className="mt-3 text-sm text-navy-600 dark:text-navy-300">Theorie-Dungeon · Prototyp für den Hackathon Fulda 2026</p>
           <p className="mt-1 text-sm text-navy-600 dark:text-navy-300">
-            Lernplattform für Fahrschulkompetenzen.
+            Dein Fortschritt wird nur lokal in diesem Browser gespeichert. Alle Fragen sind Beispielfragen.
           </p>
         </div>
 
-        <div className="flex flex-col gap-2" aria-label="Social Links">
-          {SOCIAL_LINKS.map((link) => (
-            <a
+        <nav className="flex flex-wrap gap-x-6 gap-y-2" aria-label="Fußzeilennavigation">
+          {[...NAV_LINKS, { href: "/spiel", label: "Spielen" }].map((link) => (
+            <Link
               key={link.href}
               href={link.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-navy-700 underline-offset-2 transition-colors hover:text-cyan-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-800 dark:text-navy-200 dark:hover:text-accent dark:focus-visible:ring-accent"
+              className={`rounded text-sm font-medium text-navy-700 underline-offset-2 transition-colors hover:text-cyan-800 hover:underline dark:text-navy-200 dark:hover:text-accent ${focusRing}`}
             >
               {link.label}
-            </a>
+            </Link>
           ))}
-        </div>
+        </nav>
       </div>
 
       <div className="border-t border-navy-200 dark:border-navy-800">
-        <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6">
+        <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6">
           <p className="text-sm text-navy-600 dark:text-navy-300">
-            © 2026 Fahrkompetenz – Open Source.
+            © 2026 Team DigiFL · Schriften: Silkscreen, Pixelify Sans (SIL OFL), Inter.
           </p>
         </div>
       </div>

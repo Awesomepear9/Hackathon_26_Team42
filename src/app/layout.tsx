@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { Footer, Header } from "@/components/site-chrome";
 import { ThemeApplier } from "@/components/theme-applier";
@@ -9,10 +10,26 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
+const silkscreen = localFont({
+  src: "./fonts/Silkscreen-Regular.ttf",
+  variable: "--font-silkscreen",
+  display: "block",
+});
+
+const pixelify = localFont({
+  src: "./fonts/PixelifySans-Medium.ttf",
+  variable: "--font-pixelify",
+  display: "block",
+});
+
 export const metadata: Metadata = {
-  title: "Fahrkompetenz – Fahrschul-Lernplattform",
+  title: {
+    default: "DigiFL Theorie-Dungeon",
+    template: "%s · DigiFL",
+  },
   description:
-    "Lern- und Prüfungsplattform für Fahrschulkompetenzen – Theorie, Prüfungssimulation und mehr.",
+    "Führerschein-Theorie lernen, als würdest du schon fahren: Fahr durch eine Pixel-Stadt und lerne die Regeln genau dort, wo du sie brauchst.",
+  icons: { icon: { url: "/digifl-logo.svg#icon", type: "image/svg+xml" } },
 };
 
 export const viewport: Viewport = {
@@ -25,7 +42,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="de"
-      className={`${inter.variable} h-full antialiased`}
+      className={`${inter.variable} ${silkscreen.variable} ${pixelify.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>
