@@ -1,0 +1,296 @@
+{
+  "version": 8,
+  "name": "DigiFL Situation (hell)",
+  "metadata": {
+    "digifl:schema": "openmaptiles",
+    "digifl:doc": "Layer-Beschreibung siehe README.md, Abschnitt „Kartenstil“"
+  },
+  "glyphs": "/fonts/{fontstack}/{range}.pbf",
+  "sources": {
+    "openmaptiles": {
+      "type": "vector",
+      "url": "https://tiles.openfreemap.org/planet",
+      "attribution": "© OpenStreetMap contributors"
+    },
+    "roundabout-islands": {
+      "type": "geojson",
+      "data": { "type": "FeatureCollection", "features": [] }
+    },
+    "route": {
+      "type": "geojson",
+      "data": { "type": "FeatureCollection", "features": [] }
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": { "background-color": "#dcf2eb" }
+    },
+    {
+      "id": "landcover-green",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "landcover",
+      "filter": ["match", ["get", "class"], ["grass", "wood"], true, false],
+      "paint": { "fill-color": "#93d6c0", "fill-antialias": true }
+    },
+    {
+      "id": "water",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "water",
+      "filter": ["!=", ["get", "brunnel"], "tunnel"],
+      "paint": { "fill-color": "#baf3f8" }
+    },
+    {
+      "id": "waterway",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "waterway",
+      "filter": [
+        "all",
+        ["match", ["get", "class"], ["river", "canal", "stream"], true, false],
+        ["!=", ["get", "brunnel"], "tunnel"]
+      ],
+      "layout": { "line-cap": "round", "line-join": "round" },
+      "paint": {
+        "line-color": "#baf3f8",
+        "line-width": ["interpolate", ["exponential", 2], ["zoom"], 12, 1, 18, 12, 20, 48]
+      }
+    },
+    {
+      "id": "building",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "building",
+      "minzoom": 14,
+      "paint": { "fill-color": "#e7eaf0", "fill-antialias": true }
+    },
+    {
+      "id": "roundabout-island",
+      "type": "fill",
+      "source": "roundabout-islands",
+      "minzoom": 15,
+      "filter": ["==", ["geometry-type"], "Polygon"],
+      "paint": { "fill-color": "#93d6c0" }
+    },
+    {
+      "id": "road",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "filter": [
+        "all",
+        ["in", ["geometry-type"], ["literal", ["LineString", "MultiLineString"]]],
+        [
+          "match",
+          ["get", "class"],
+          ["motorway", "trunk", "primary", "secondary", "tertiary", "minor", "service"],
+          true,
+          false
+        ],
+        ["!=", ["get", "brunnel"], "tunnel"],
+        ["!=", ["get", "service"], "parking_aisle"]
+      ],
+      "layout": { "line-cap": "round", "line-join": "round" },
+      "paint": {
+        "line-color": "#7a8499",
+        "line-width": [
+          "interpolate",
+          ["exponential", 2],
+          ["zoom"],
+          12,
+          [
+            "case",
+            ["==", ["get", "ramp"], 1],
+            0.5,
+            [
+              "match",
+              ["get", "class"],
+              ["motorway", "trunk"],
+              2,
+              ["primary", "secondary"],
+              1.5,
+              "tertiary",
+              1,
+              "service",
+              0.25,
+              0.5
+            ]
+          ],
+          14,
+          [
+            "case",
+            ["==", ["get", "ramp"], 1],
+            2.5,
+            [
+              "match",
+              ["get", "class"],
+              ["motorway", "trunk"],
+              5,
+              ["primary", "secondary"],
+              4,
+              "tertiary",
+              3,
+              "service",
+              1.2,
+              2.5
+            ]
+          ],
+          18,
+          [
+            "case",
+            ["==", ["get", "ramp"], 1],
+            26,
+            [
+              "match",
+              ["get", "class"],
+              ["motorway", "trunk"],
+              48,
+              ["primary", "secondary"],
+              36,
+              "tertiary",
+              32,
+              "service",
+              14,
+              28
+            ]
+          ],
+          20,
+          [
+            "case",
+            ["==", ["get", "ramp"], 1],
+            104,
+            [
+              "match",
+              ["get", "class"],
+              ["motorway", "trunk"],
+              192,
+              ["primary", "secondary"],
+              144,
+              "tertiary",
+              128,
+              "service",
+              56,
+              112
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "id": "road-centerline",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "minzoom": 17,
+      "filter": [
+        "all",
+        ["in", ["geometry-type"], ["literal", ["LineString", "MultiLineString"]]],
+        ["match", ["get", "class"], ["motorway", "trunk", "primary", "secondary"], true, false],
+        ["!=", ["get", "ramp"], 1],
+        ["!=", ["get", "brunnel"], "tunnel"]
+      ],
+      "layout": { "line-cap": "butt", "line-join": "round" },
+      "paint": {
+        "line-color": "#f5f7fa",
+        "line-width": ["interpolate", ["exponential", 2], ["zoom"], 17, 1.5, 18, 2, 20, 4],
+        "line-dasharray": [2, 2]
+      }
+    },
+    {
+      "id": "route-line",
+      "type": "line",
+      "source": "route",
+      "layout": { "line-cap": "round", "line-join": "round" },
+      "paint": {
+        "line-color": "#22bbca",
+        "line-opacity": 0.9,
+        "line-width": ["interpolate", ["exponential", 2], ["zoom"], 12, 3.5, 14, 5, 18, 10, 20, 40]
+      }
+    },
+    {
+      "id": "roundabout-island-rim",
+      "type": "line",
+      "source": "roundabout-islands",
+      "minzoom": 15,
+      "filter": ["==", ["geometry-type"], "LineString"],
+      "layout": { "line-cap": "round", "line-join": "round" },
+      "paint": {
+        "line-color": "#f5f7fa",
+        "line-width": 3,
+        "line-offset": [
+          "interpolate",
+          ["exponential", 2],
+          ["zoom"],
+          15,
+          [
+            "match",
+            ["get", "roadClass"],
+            ["motorway", "trunk"],
+            5.4,
+            ["primary", "secondary"],
+            4.6,
+            "tertiary",
+            4,
+            3.6
+          ],
+          18,
+          [
+            "match",
+            ["get", "roadClass"],
+            ["motorway", "trunk"],
+            25.5,
+            ["primary", "secondary"],
+            19.5,
+            "tertiary",
+            17.5,
+            15.5
+          ],
+          20,
+          [
+            "match",
+            ["get", "roadClass"],
+            ["motorway", "trunk"],
+            97.5,
+            ["primary", "secondary"],
+            73.5,
+            "tertiary",
+            65.5,
+            57.5
+          ]
+        ]
+      }
+    },
+    {
+      "id": "road-label",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 15,
+      "filter": [
+        "match",
+        ["get", "class"],
+        ["motorway", "trunk", "primary", "secondary", "tertiary", "minor"],
+        true,
+        false
+      ],
+      "layout": {
+        "visibility": "none",
+        "symbol-placement": "line",
+        "symbol-spacing": 320,
+        "text-field": ["coalesce", ["get", "name:de"], ["get", "name"]],
+        "text-font": ["Inter SemiBold"],
+        "text-size": 12,
+        "text-max-angle": 30,
+        "text-padding": 4
+      },
+      "paint": {
+        "text-color": "#243049",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1.5
+      }
+    }
+  ]
+}

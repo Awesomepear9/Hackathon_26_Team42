@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Eigenständige Apps mit eigener Lint-Konfiguration
+    "apps/**",
+    "public/apps/**",
   ]),
 ]);
 

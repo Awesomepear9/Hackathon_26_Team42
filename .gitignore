@@ -34,3 +34,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Praxismodul-Build (erzeugt von scripts/build-praxismodul.mjs)
+/public/apps/
+/apps/praxismodul/node_modules/
+/apps/praxismodul/dist/

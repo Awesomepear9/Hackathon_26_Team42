@@ -1,0 +1,96 @@
+/* DigiFL Corporate Design – Tailwind CSS v4 */
+
+@theme {
+  --font-sans: var(--font-inter), 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  --color-navy-50: #f5f7fa;
+  --color-navy-100: #e7eaf0;
+  --color-navy-200: #cdd2dc;
+  --color-navy-300: #a7afbf;
+  --color-navy-400: #7a8499;
+  --color-navy-500: #535e76;
+  --color-navy-600: #36425b;
+  --color-navy-700: #243049;
+  --color-navy-800: #18233c;
+  --color-navy-900: #111c33;
+  --color-navy-950: #0a1121;
+
+  --color-cyan-50: #eefcfd;
+  --color-cyan-100: #dcf9fb;
+  --color-cyan-200: #baf3f8;
+  --color-cyan-300: #92ecf3;
+  --color-cyan-400: #5ce2ee;
+  --color-cyan-500: #26d9e8;
+  --color-cyan-600: #22bbca;
+  --color-cyan-700: #1d99a8;
+  --color-cyan-800: #187484;
+  --color-cyan-900: #135060;
+  --color-cyan-950: #0c3640;
+
+  --color-green-50: #eef9f5;
+  --color-green-100: #dcf2eb;
+  --color-green-200: #bae5d6;
+  --color-green-300: #93d6c0;
+  --color-green-400: #5dc2a0;
+  --color-green-500: #27ae80;
+  --color-green-600: #239672;
+  --color-green-700: #1e7b61;
+  --color-green-800: #185f50;
+  --color-green-900: #13433f;
+  --color-green-950: #0d2c2a;
+
+  --color-amber-50: #fff9f1;
+  --color-amber-100: #fff3e4;
+  --color-amber-200: #ffe7c8;
+  --color-amber-300: #ffdaaa;
+  --color-amber-400: #ffc77f;
+  --color-amber-500: #ffb454;
+  --color-amber-600: #da9b4c;
+  --color-amber-700: #b18043;
+  --color-amber-800: #84623a;
+  --color-amber-900: #584431;
+  --color-amber-950: #3a2d22;
+
+  --color-red-50: #fdf2f3;
+  --color-red-100: #fbe5e7;
+  --color-red-200: #f8cbcf;
+  --color-red-300: #f3aeb3;
+  --color-red-400: #ee858e;
+  --color-red-500: #e85d68;
+  --color-red-600: #c7515d;
+  --color-red-700: #a14451;
+  --color-red-800: #793644;
+  --color-red-900: #512937;
+  --color-red-950: #361c25;
+
+  --color-primary: #111c33;
+  --color-accent: #26d9e8;
+  --color-surface: #f5f7fa;
+  --color-success: #27ae80;
+  --color-warning: #ffb454;
+  --color-danger: #e85d68;
+  --color-danger-strong: #a14451;
+
+  --text-display: 3rem;
+  --text-display--line-height: 3.5rem;
+  --text-display--font-weight: 800;
+  --text-h1: 2.25rem;
+  --text-h1--line-height: 2.75rem;
+  --text-h1--font-weight: 700;
+  --text-h2: 1.75rem;
+  --text-h2--line-height: 2.25rem;
+  --text-h2--font-weight: 700;
+  --text-h3: 1.25rem;
+  --text-h3--line-height: 1.75rem;
+  --text-h3--font-weight: 600;
+  --text-body: 1rem;
+  --text-body--line-height: 1.5rem;
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.25rem;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
+  --text-caption--font-weight: 600;
+  --text-caption--letter-spacing: 0.08em;
+
+  --shadow-card: 0 4px 16px rgb(17 28 51 / 0.06);
+}
