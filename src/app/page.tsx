@@ -2,19 +2,18 @@ import Link from "next/link";
 import { PixelMap } from "@/components/dungeon/pixel-map";
 import { Logo } from "@/components/logo";
 import { CATS, DEMO_DONE } from "@/lib/dungeon/catalog";
-import { generate } from "@/lib/dungeon/city";
+import { demoCity } from "@/lib/dungeon/city";
 
 const btn =
   "inline-flex h-12 items-center justify-center gap-2 rounded-xl px-6 text-base font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-800 focus-visible:ring-offset-2 dark:focus-visible:ring-accent dark:focus-visible:ring-offset-navy-950";
 const eyebrow = "font-pixel-body text-sm tracking-wide text-cyan-800 dark:text-accent";
 
-const heroCity = { ...generate("mittel", 4242), dir: "E" as const };
-heroCity.pos = { r: heroCity.h - 1, c: 4 };
-const ctaCity = generate("leicht", 77);
+const heroCity = demoCity("mittel", 4242);
+const ctaCity = demoCity("leicht", 77);
 
 const REASONS = [
   { title: "Geplante Reform", text: "Die Präsenzpflicht im Theorieunterricht soll entfallen. Lernen per App wird zum Normalfall." },
-  { title: "Situationen statt Listen", text: "Vorfahrtsfragen kommen an der Kreuzung, Fußgängerfragen am Zebrastreifen, also da, wo sie hingehören." },
+  { title: "Situationen statt Listen", text: "Vorfahrtsfragen kommen an der Kreuzung, Bahnfragen am Andreaskreuz, also da, wo sie hingehören." },
   { title: "Wie in der Prüfung", text: "Jede Frage zählt 2 bis 5 Fehlerpunkte. Ab 10 Punkten ist Schluss, genau wie bei der echten Theorieprüfung." },
 ];
 
@@ -67,7 +66,7 @@ export default function HomePage() {
               Jeder Run = neue Stadt
             </span>
             <div className="-rotate-1 bg-zinc-950 p-2 ring-4 ring-zinc-600">
-              <PixelMap run={heroCity} marks={false} label="Beispiel einer zufällig erzeugten Pixel-Stadt mit Kreuzungen, Kreisverkehr und Bahnübergang" />
+              <PixelMap board={heroCity.board} player={heroCity.player} vehicles={heroCity.vehicles} label="Beispiel einer zufällig erzeugten Pixel-Stadt mit Kreuzungen, Verkehrszeichen und anderen Autos" />
             </div>
             <span className="absolute -bottom-3 -right-1 z-10 rotate-2 bg-white px-3 py-2 font-pixel-body text-sm text-zinc-950 ring-4 ring-zinc-950 sm:-right-4 sm:bottom-8">
               5 Herzen = 10 Fehlerpunkte
@@ -100,9 +99,9 @@ export default function HomePage() {
           <p className={eyebrow}>LOSLEGEN</p>
           <h2 className="mt-2 text-h2 text-primary dark:text-white">Drei Wege in den Dungeon</h2>
           <div className="mt-8 grid gap-6 md:grid-cols-3">
-            <CtaCard href="/uebersicht" title="Online spielen" go="Run starten" text="Wähle eine Schwierigkeit. Jeder Run erzeugt ein neues Straßennetz mit versteckten Ereignissen.">
+            <CtaCard href="/uebersicht" title="Online spielen" go="Run starten" text="Wähle eine Schwierigkeit. Jeder Run erzeugt ein neues Straßennetz mit Verkehr, Schildern und versteckten Ereignissen.">
               <div className="w-3/5 scale-95 bg-zinc-950 p-1.5 ring-4 ring-zinc-600">
-                <PixelMap run={ctaCity} player={false} marks={false} label="Kleine Pixel-Stadt" />
+                <PixelMap board={ctaCity.board} vehicles={ctaCity.vehicles} label="Kleine Pixel-Stadt" />
               </div>
             </CtaCard>
             <CtaCard href="/uebersicht" title="Fortschritt im Fragenkatalog" go="Zur Übersicht" text="Sieh, wie weit du in jedem Bereich des amtlichen Fragenkatalogs bist, vom Grundstoff bis zum Zusatzstoff Klasse B.">
@@ -117,9 +116,9 @@ export default function HomePage() {
                 ))}
               </div>
             </CtaCard>
-            <CtaCard href="#warum" title="So funktioniert's" go="Mehr erfahren" text="Fahr mit Pfeilen, Gas und Bremse durch die Stadt. Achte auf dein Tempo: Wer zu schnell ist, sammelt Fehlerpunkte.">
+            <CtaCard href="#warum" title="So funktioniert's" go="Mehr erfahren" text="Feld für Feld durch die Stadt: Vor dem Abbiegen blinken, Vorfahrt beachten und notfalls abwarten. Fahrfehler kosten Fehlerpunkte.">
               <ul className="grid w-4/5 gap-2.5">
-                {["Klassische Frage", "Situation mit Animation", "Reaktion: selbst bremsen"].map((t, i) => (
+                {["Feld für Feld fahren", "Blinken und abwarten", "Schilder beachten"].map((t, i) => (
                   <li key={t} className="flex items-center gap-2.5 font-pixel-body text-sm text-white">
                     <span className="grid size-7 flex-none place-items-center bg-yellow-300 text-xs text-zinc-950">0{i + 1}</span>
                     {t}

@@ -1,261 +1,315 @@
-// Spiellogik. Alle Aktionen verändern einen Entwurf (Kopie) von Run und Statistik;
-// der Store (store.ts) kopiert, speichert und benachrichtigt die Komponenten.
-import { CATS, DEMO_DONE, KINDNAME, LIMIT, questionById, type Question } from "./catalog";
-import { DIFF, DIRS, DV, exits, generate, turn, type DiffKey, type Run } from "./city";
+// DigiFL Theorie-Dungeon – PLATZHALTER-ENGINE (aus engine.js, Iteration 3).
+// Wird später durch das WebAssembly-Modul ersetzt. Das Frontend ruft nur diese drei Funktionen auf:
+//
+//   Engine.generate_board(difficulty, seed)    -> Board
+//   Engine.new_game(board, difficulty, seed)   -> GameState   (Startzustand)
+//   Engine.update(board, gameState, input)     -> GameState   (ein Spielzug)
+//
+// Datenformate wie serde sie standardmäßig erzeugt (siehe Typen unten). board.signs ergänzt das
+// Frontend (signs.ts), damit die Engine Vorfahrt und Einbahnstraßen kennt.
 
-export interface RunRecord {
-  d: string;
-  diff: string;
-  ev: string;
-  fp: number;
-  res: "ok" | "no";
+export type Direction = "North" | "East" | "South" | "West";
+export type Blinker = "Left" | "Right" | "Straight" | "Backwards";
+export type DiffKey = "leicht" | "mittel" | "schwer";
+
+export interface RoadTile {
+  up: boolean;
+  down: boolean;
+  left: boolean;
+  right: boolean;
+}
+/** "Grass" oder Straße; up = Norden (y-1), down = Süden (y+1), left = Westen, right = Osten */
+export type TileType = "Grass" | { Road: RoadTile };
+
+export type SignType = "yield" | "stop" | "spiel" | "spielEnde" | "einbahn" | "einfahrtVerboten" | "bahn";
+export type FieldKind = "bahn" | "spiel" | "einbahn" | "vorfahrt" | "rvl" | "zebra";
+
+export interface Signs {
+  /** Arme mit Wartepflicht je Kreuzung */
+  priority: Record<string, { sub: Partial<Record<Direction, "yield" | "stop">> }>;
+  /** erlaubte Fahrtrichtung je Feld */
+  oneway: Record<string, Direction>;
+  /** nur Frontend: Tile-Grafik, Feldart und Schild-Sprites */
+  tiles: Record<string, { img: string; rot: number }>;
+  kinds: Record<string, FieldKind>;
+  sprites: { type: SignType; x: number; y: number }[];
 }
 
-export interface Stats {
-  done: Record<string, number>;
-  seen: Record<string, 1>;
-  runs: RunRecord[];
+export interface Board {
+  /** map[y][x], y = Zeile (0 = oben/Norden) */
+  map: TileType[][];
+  signs?: Signs;
 }
 
-export interface Draft {
-  run: Run | null;
-  stats: Stats;
+export interface Input {
+  /** None = abwarten */
+  direction: Direction | "None";
+  blinker: Blinker;
 }
 
-export const MAX_FP = 10;
+export interface Agent {
+  x: number;
+  y: number;
+  heading: Direction;
+  blinker: Blinker;
+  stopped_at: string | null;
+}
 
-export function defaultStats(): Stats {
-  return {
-    done: { ...DEMO_DONE },
-    seen: {},
-    runs: [
-      { d: "Gestern", diff: "Mittel", ev: "10 / 10", fp: 4, res: "ok" },
-      { d: "23.10.", diff: "Leicht", ev: "6 / 6", fp: 2, res: "ok" },
-      { d: "22.10.", diff: "Mittel", ev: "7 / 10", fp: 10.5, res: "no" },
-      { d: "20.10.", diff: "Leicht", ev: "6 / 6", fp: 5, res: "ok" },
-    ],
+export interface Vehicle extends Agent {
+  id: number;
+  kind: string;
+  wait: number;
+  plan: Direction | null;
+}
+
+export interface Message {
+  kind: "info" | "ok" | "error";
+  text: string;
+  points?: number;
+}
+
+export interface GameState {
+  turn: number;
+  player: Agent;
+  vehicles: Vehicle[];
+  /** Fahrfehler-Punkte aus der Engine (Fragen zählt das Frontend) */
+  error_points: number;
+  visited: [number, number][];
+  /** nur dieser Zug */
+  messages: Message[];
+  status: "Running";
+  _seed: number;
+}
+
+const MAP_SIZE = 25; // Platzhalter: groß genug für „Schwer“ (21–25 Felder)
+const SIZES: Record<DiffKey, [number, number]> = { leicht: [9, 12], mittel: [15, 20], schwer: [21, 25] };
+const CARS: Record<DiffKey, number> = { leicht: 3, mittel: 6, schwer: 10 };
+const KINDS = ["auto_1", "auto_2", "sprinter", "motorrad_1"];
+
+export const DIRS: Direction[] = ["North", "East", "South", "West"];
+export const V: Record<Direction, [number, number]> = { North: [0, -1], East: [1, 0], South: [0, 1], West: [-1, 0] };
+export const FIELD: Record<Direction, keyof RoadTile> = { North: "up", East: "right", South: "down", West: "left" };
+export const turn = (d: Direction, k: number): Direction => DIRS[(DIRS.indexOf(d) + k + 4) % 4];
+export const opp = (d: Direction) => turn(d, 2);
+export const key = (x: number, y: number) => x + "," + y;
+
+/** Deterministischer Zufall (mulberry32) */
+export function rng(seed: number) {
+  return function () {
+    seed |= 0;
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
 
-export const hearts = (G: Run) => Math.max(0, 5 - G.fp / 2);
-export const fmt = (n: number) => String(n).replace(".", ",");
-export const pct = (a: number, b: number) => Math.round((a / b) * 100);
+export const roadAt = (b: Board, x: number, y: number): RoadTile | null => {
+  const t = b.map[y]?.[x];
+  return t && t !== "Grass" ? t.Road : null;
+};
+export const exits = (b: Board, x: number, y: number): Direction[] => {
+  const r = roadAt(b, x, y);
+  return r ? DIRS.filter((d) => r[FIELD[d]]) : [];
+};
+const isJunction = (b: Board, x: number, y: number) => exits(b, x, y).length >= 3;
 
-/** Wartezeit bis zum nächsten Feld: je schneller, desto kürzer */
-export const stepDelay = (speed: number) => Math.max(260, 1500 - speed * 21);
-
-function addLog(G: Run, t: string, tone?: "good" | "bad") {
-  G.log.unshift({ t, tone });
-  G.log = G.log.slice(0, 30);
-}
-
-export function newRun(draft: Draft, diff: DiffKey) {
-  draft.run = generate(diff, Math.floor(Math.random() * 1e9));
-}
-
-/** Abzweigungen an der nächsten Kreuzung, relativ zur Fahrtrichtung */
-export function relOptions(G: Run): ("up" | "left" | "right" | "down")[] {
-  let r = G.pos.r;
-  let c = G.pos.c;
-  const d = G.dir;
-  for (let i = 0; i < 8; i++) {
-    const ex = exits(G, r, c).filter((x) => x !== turn(d, 2));
-    if (ex.length !== 1 || ex[0] !== d || i === 7)
-      return ex.map((x) => (x === d ? "up" : x === turn(d, -1) ? "left" : x === turn(d, 1) ? "right" : "down"));
-    r += DV[d][0];
-    c += DV[d][1];
+/* ---------------- Karte erzeugen ---------------- */
+function lines(size: number, R: () => number) {
+  const a = [0];
+  let p = 0;
+  for (;;) {
+    p += 3 + (R() < 0.45 ? 1 : 0);
+    if (p > size - 4) break;
+    a.push(p);
   }
-  return ["up"];
+  a.push(size - 1);
+  return a;
 }
 
-export function step(draft: Draft) {
-  const G = draft.run;
-  if (!G || G.active || G.over || G.speed <= 0) return;
-  const opts = exits(G, G.pos.r, G.pos.c).filter((d) => d !== turn(G.dir, 2));
-  let nd = null;
-  if (G.want) {
-    const wd = G.want === "left" ? turn(G.dir, -1) : turn(G.dir, 1);
-    if (opts.includes(wd)) {
-      nd = wd;
-      G.want = null;
+function generate_board(difficulty: DiffKey, seed: number): Board {
+  const R = rng(seed);
+  const [lo, hi] = SIZES[difficulty] ?? SIZES.mittel;
+  const W = lo + Math.floor(R() * (hi - lo + 1));
+  const H = Math.max(lo, W - Math.floor(R() * 4));
+  const rows = lines(H, R);
+  const cols = lines(W, R);
+  const g = Array.from({ length: H }, (_, r) => Array.from({ length: W }, (_, c) => rows.includes(r) || cols.includes(c)));
+  rows.slice(1, -1).forEach((r) => {
+    for (let i = 0; i < cols.length - 1; i++) if (R() < 0.22) for (let c = cols[i] + 1; c < cols[i + 1]; c++) g[r][c] = false;
+  });
+  cols.slice(1, -1).forEach((c) => {
+    for (let i = 0; i < rows.length - 1; i++) if (R() < 0.22) for (let r = rows[i] + 1; r < rows[i + 1]; r++) g[r][c] = false;
+  });
+  const at = (r: number, c: number) => r >= 0 && c >= 0 && r < H && c < W && g[r][c];
+  for (let r = 0; r < H; r++)
+    for (let c = 0; c < W; c++) if (g[r][c] && !(at(r - 1, c) || at(r + 1, c) || at(r, c - 1) || at(r, c + 1))) g[r][c] = false;
+  const ox = Math.floor((MAP_SIZE - W) / 2);
+  const oy = Math.floor((MAP_SIZE - H) / 2);
+  const map: TileType[][] = Array.from({ length: MAP_SIZE }, () => Array.from({ length: MAP_SIZE }, () => "Grass" as TileType));
+  for (let r = 0; r < H; r++)
+    for (let c = 0; c < W; c++)
+      if (g[r][c]) map[oy + r][ox + c] = { Road: { up: at(r - 1, c), down: at(r + 1, c), left: at(r, c - 1), right: at(r, c + 1) } };
+  return { map };
+}
+
+/* ---------------- Startzustand ---------------- */
+function new_game(board: Board, difficulty: DiffKey, seed: number): GameState {
+  const R = rng(seed ^ 0x5bd1e995);
+  let start: { x: number; y: number } | null = null;
+  for (let y = MAP_SIZE - 1; y >= 0 && !start; y--)
+    for (let x = 0; x < MAP_SIZE && !start; x++) {
+      const e = exits(board, x, y);
+      if (e.length === 2 && e.includes("East") && e.includes("West")) start = { x, y };
     }
+  start ??= { x: 0, y: 0 };
+  const player: Agent = { x: start.x, y: start.y, heading: "East", blinker: "Straight", stopped_at: null };
+  const roads: [number, number][] = [];
+  for (let y = 0; y < MAP_SIZE; y++)
+    for (let x = 0; x < MAP_SIZE; x++)
+      if (roadAt(board, x, y) && !isJunction(board, x, y) && Math.abs(x - start.x) + Math.abs(y - start.y) > 4) roads.push([x, y]);
+  const vehicles: Vehicle[] = [];
+  const used = new Set<string>();
+  for (let i = 0; i < (CARS[difficulty] ?? 5) && roads.length; i++) {
+    const [x, y] = roads.splice(Math.floor(R() * roads.length), 1)[0];
+    if (used.has(key(x, y))) continue;
+    used.add(key(x, y));
+    const e = exits(board, x, y);
+    vehicles.push({ id: i + 1, kind: KINDS[i % KINDS.length], x, y, heading: e[Math.floor(R() * e.length)], blinker: "Straight", wait: 0, stopped_at: null, plan: null });
   }
-  if (!nd) {
-    if (opts.includes(G.dir)) nd = G.dir;
-    else if (opts.length === 1) nd = opts[0];
-    else if (opts.length === 0) {
-      G.speed = 0;
-      addLog(G, "Sackgasse – halte an und wende mit dem Pfeil nach unten.");
-      return;
-    } else {
-      G.speed = 0;
-      addLog(G, "Abzweigung! Wähle links oder rechts und gib wieder Gas.");
-      return;
-    }
-  }
-  G.pos = { r: G.pos.r + DV[nd][0], c: G.pos.c + DV[nd][1] };
-  G.dir = nd;
-  const key = G.pos.r + "," + G.pos.c;
-  if (!G.visited.includes(key)) G.visited.push(key);
-  if (G.speed > 50) {
-    G.fp += 1;
-    addLog(G, `${G.speed} km/h innerorts – zu schnell! +1 Fehlerpunkt`, "bad");
-  }
-  const ev = G.events[key];
-  if (ev && !ev.st) {
-    const lim = LIMIT[ev.kind];
-    if (G.speed > lim && G.speed <= 50) {
-      G.fp += 1;
-      addLog(
-        G,
-        `Mit ${G.speed} km/h ${ev.kind === "S" ? "in die Spielstraße" : "auf die Gefahrenstelle"} – erlaubt/angemessen: ${lim}. +1 Fehlerpunkt`,
-        "bad",
-      );
-    }
-    G.speed = 0;
-    G.active = key;
-    addLog(G, `Ereignis: ${KINDNAME[ev.kind]}!`);
-  }
-  if (G.fp >= MAX_FP) endRun(draft, false);
+  return {
+    turn: 0, player, vehicles, error_points: 0, visited: [[start.x, start.y]],
+    messages: [{ kind: "info", text: "Los geht's! Wähle eine Richtung." }], status: "Running", _seed: seed,
+  };
 }
 
-export function press(draft: Draft, dir: "up" | "left" | "right" | "down") {
-  const G = draft.run;
-  if (!G || G.active || G.over) return;
-  if (dir === "down") {
-    if (G.speed > 0) return addLog(G, "Zum Wenden erst anhalten (Bremse).");
-    G.dir = turn(G.dir, 2);
-    G.want = null;
-    return addLog(G, "Gewendet.");
+/* ---------------- Regeln ---------------- */
+type AnyAgent = Agent & { id: number };
+const agents = (s: GameState): AnyAgent[] => [{ ...s.player, id: 0 }, ...s.vehicles];
+
+/** Ist das Feld für ein Fahrzeug mit Fahrtrichtung `heading` belegt? */
+function blocked(b: Board, s: GameState, x: number, y: number, heading: Direction, selfId: number) {
+  const j = isJunction(b, x, y);
+  return agents(s).some((a) => a.id !== selfId && a.x === x && a.y === y && (j || a.heading === heading));
+}
+
+/** Hat B (kommt aus Arm armB) Vorrang vor A (kommt aus armA, fährt in headingA)? */
+function hasPriority(pr: Signs["priority"][string] | undefined, armB: Direction, armA: Direction, headingA: Direction) {
+  if (pr) {
+    const aMain = !pr.sub[armA];
+    const bMain = !pr.sub[armB];
+    if (bMain && !aMain) return true;
+    if (aMain && !bMain) return false;
   }
-  G.want = dir === "up" || G.want === dir ? null : dir;
-  if (dir === "up" && G.speed === 0) G.speed = 10;
-  step(draft);
+  return armB === turn(headingA, 1); // rechts vor links
 }
 
-export function gas(draft: Draft) {
-  const G = draft.run;
-  if (!G || G.active || G.over) return;
-  const was = G.speed;
-  G.speed = Math.min(60, G.speed + 10);
-  if (!was) step(draft);
+/** Muss A (fährt mit heading in die Kreuzung jx,jy) warten? */
+function mustYield(b: Board, s: GameState, A: AnyAgent, jx: number, jy: number) {
+  const armA = opp(A.heading);
+  const pr = b.signs?.priority[key(jx, jy)];
+  return agents(s).some((B) => {
+    if (B.id === A.id) return false;
+    if (B.x + V[B.heading][0] !== jx || B.y + V[B.heading][1] !== jy) return false; // fährt nicht auf die Kreuzung zu
+    const armB = DIRS.find((d) => jx + V[d][0] === B.x && jy + V[d][1] === B.y);
+    if (!armB || armB === armA) return false;
+    return hasPriority(pr, armB, armA, A.heading);
+  });
 }
+const onewayOk = (b: Board, x: number, y: number, d: Direction) => {
+  const ow = b.signs?.oneway[key(x, y)];
+  return !ow || ow === d;
+};
+const subSign = (b: Board, jx: number, jy: number, arm: Direction) => b.signs?.priority[key(jx, jy)]?.sub[arm] ?? null;
 
-export function brake(draft: Draft) {
-  const G = draft.run;
-  if (!G || G.active || G.over) return;
-  G.speed = Math.max(0, G.speed - 10);
-}
+/* ---------------- Spielzug ---------------- */
+function update(board: Board, prev: GameState, input: Input): GameState {
+  const s: GameState = structuredClone(prev);
+  s.turn++;
+  s.messages = [];
+  const P = s.player;
+  const err = (pts: number, text: string) => {
+    s.error_points += pts;
+    s.messages.push({ kind: "error", text, points: pts });
+  };
+  P.blinker = input.blinker || "Straight";
 
-export function isCorrect(q: Question, selected: number[]) {
-  const c = q.c ?? [];
-  return c.length === selected.length && c.every((i) => selected.includes(i));
-}
-
-export function finishEvent(draft: Draft, ok: boolean) {
-  const G = draft.run;
-  if (!G?.active) return;
-  const ev = G.events[G.active];
-  if (ev.st) return;
-  const q = questionById(ev.qid);
-  ev.st = ok ? "ok" : "bad";
-  if (ok) {
-    addLog(G, `Richtig: ${KINDNAME[ev.kind]} gemeistert.`, "good");
-    const S = draft.stats;
-    if (!S.seen[q.id]) {
-      S.seen[q.id] = 1;
-      const total = CATS.find((c) => c.code === q.cat)?.total ?? 999;
-      S.done[q.cat] = Math.min(total, (S.done[q.cat] ?? 0) + 1);
-    }
+  if (!input.direction || input.direction === "None") {
+    P.stopped_at = key(P.x, P.y);
+    s.messages.push({ kind: "info", text: "Du wartest ab." });
   } else {
-    G.fp += q.pts;
-    addLog(G, `Falsch: +${q.pts} Fehlerpunkte`, "bad");
-  }
-}
-
-export function continueRun(draft: Draft) {
-  const G = draft.run;
-  if (!G) return;
-  G.active = null;
-  if (G.fp >= MAX_FP) return endRun(draft, false);
-  if (Object.values(G.events).every((e) => e.st)) endRun(draft, true);
-}
-
-function endRun(draft: Draft, won: boolean) {
-  const G = draft.run!;
-  G.over = won ? "won" : "lost";
-  G.speed = 0;
-  const evs = Object.values(G.events);
-  const done = evs.filter((e) => e.st).length;
-  draft.stats.runs.unshift({ d: "Heute", diff: DIFF[G.diff].name, ev: `${done} / ${evs.length}`, fp: G.fp, res: won ? "ok" : "no" });
-  draft.stats.runs = draft.stats.runs.slice(0, 8);
-}
-
-/* Demo-Zustand für Präsentationen: /spiel?demo=fahrt | /spiel?demo=ereignis */
-function bfs(G: Run, from: string, to: string) {
-  const prev: Record<string, string | null> = { [from]: null };
-  const q = [from];
-  while (q.length) {
-    const k = q.shift()!;
-    if (k === to) break;
-    const [r, c] = k.split(",").map(Number);
-    for (const d of exits(G, r, c)) {
-      const n = r + DV[d][0] + "," + (c + DV[d][1]);
-      if (!(n in prev)) {
-        prev[n] = k;
-        q.push(n);
+    const d = input.direction;
+    const ex = exits(board, P.x, P.y);
+    if (!ex.includes(d)) s.messages.push({ kind: "info", text: "Dort ist keine Straße." });
+    else {
+      const nx = P.x + V[d][0];
+      const ny = P.y + V[d][1];
+      const rel = d === P.heading ? "straight" : d === turn(P.heading, -1) ? "left" : d === turn(P.heading, 1) ? "right" : "back";
+      if (blocked(board, s, nx, ny, d, 0)) s.messages.push({ kind: "info", text: "Vor dir ist ein Fahrzeug. Warte ab." });
+      else {
+        if (ex.length >= 3) {
+          if ((rel === "left" || rel === "right") && P.blinker !== (rel === "left" ? "Left" : "Right"))
+            err(1, `Abgebogen ohne Blinker ${rel === "left" ? "links" : "rechts"}.`);
+          if (rel === "straight" && (P.blinker === "Left" || P.blinker === "Right")) err(1, "Blinker gesetzt, aber geradeaus gefahren.");
+        }
+        if (!onewayOk(board, nx, ny, d)) {
+          if (onewayOk(board, P.x, P.y, d) && !board.signs?.oneway[key(P.x, P.y)]) err(3, "In die Einbahnstraße falsch herum eingefahren.");
+          else s.messages.push({ kind: "info", text: "Du fährst in der Einbahnstraße falsch herum." });
+        }
+        if (isJunction(board, nx, ny)) {
+          if (mustYield(board, s, { ...P, id: 0, heading: d }, nx, ny)) err(3, "Vorfahrt missachtet!");
+          if (subSign(board, nx, ny, opp(d)) === "stop" && P.stopped_at !== key(P.x, P.y)) err(2, "Am Stoppschild nicht angehalten.");
+        }
+        P.x = nx;
+        P.y = ny;
+        P.heading = d;
+        P.stopped_at = null;
+        if (!s.visited.some(([x, y]) => x === nx && y === ny)) s.visited.push([nx, ny]);
       }
     }
   }
-  const p: string[] = [];
-  for (let k: string | null = to; k; k = prev[k]) p.unshift(k);
-  return p;
+
+  // Andere Verkehrsteilnehmer: zufällig, aber regelkonform
+  const R = rng((prev._seed || 1) + s.turn * 7919);
+  const reserved = new Set<string>();
+  for (const v of s.vehicles) {
+    const ex = exits(board, v.x, v.y);
+    let opts = ex.filter((d) => d !== opp(v.heading) && onewayOk(board, v.x + V[d][0], v.y + V[d][1], d));
+    if (!opts.length) opts = ex.filter((d) => onewayOk(board, v.x + V[d][0], v.y + V[d][1], d));
+    if (!opts.length) {
+      v.wait++;
+      continue;
+    }
+    if (!v.plan || !opts.includes(v.plan)) v.plan = opts.includes(v.heading) && R() < 0.55 ? v.heading : opts[Math.floor(R() * opts.length)];
+    const d = v.plan;
+    const nx = v.x + V[d][0];
+    const ny = v.y + V[d][1];
+    const nk = key(nx, ny);
+    v.blinker = d === v.heading ? "Straight" : d === turn(v.heading, -1) ? "Left" : d === turn(v.heading, 1) ? "Right" : "Backwards";
+    if (blocked(board, s, nx, ny, d, v.id) || reserved.has(nk)) {
+      v.wait++;
+      continue;
+    }
+    if (isJunction(board, nx, ny)) {
+      if (subSign(board, nx, ny, opp(d)) === "stop" && v.stopped_at !== key(v.x, v.y)) {
+        v.stopped_at = key(v.x, v.y);
+        v.wait++;
+        continue;
+      }
+      if (mustYield(board, s, { ...v, heading: d }, nx, ny) && v.wait < 3) {
+        v.wait++;
+        continue;
+      }
+    }
+    v.x = nx;
+    v.y = ny;
+    v.heading = d;
+    v.wait = 0;
+    v.plan = null;
+    v.stopped_at = null;
+    reserved.add(nk);
+  }
+  return s;
 }
 
-export function demoState(mode: "fahrt" | "ereignis"): Run {
-  const g = generate("mittel", 20261025);
-  const keys = Object.keys(g.events);
-  const target = keys.find((k) => g.events[k].kind === "V") ?? keys[0];
-  g.events[target].qid = "v1";
-  const [tr, tc] = target.split(",").map(Number);
-  const startKey = g.pos.r + "," + g.pos.c;
-  const path = bfs(g, startKey, target);
-  // vorher schon etwas erkundet: ein paar Ereignisse auf dem Weg und daneben
-  g.visited = path.slice(0, -1);
-  let n = 0;
-  path.slice(0, -1).forEach((k) => {
-    if (g.events[k]) {
-      g.events[k].st = n === 1 ? "bad" : "ok";
-      n++;
-    }
-  });
-  const extra = keys.filter((k) => !path.includes(k) && k !== target).slice(0, Math.max(0, 3 - n));
-  extra.forEach((k) => {
-    g.events[k].st = "ok";
-    bfs(g, startKey, k).forEach((x) => {
-      if (!g.visited.includes(x)) g.visited.push(x);
-    });
-  });
-  const last = path[path.length - 2].split(",").map(Number);
-  g.pos = { r: last[0], c: last[1] };
-  g.dir = DIRS.find((d) => last[0] + DV[d][0] === tr && last[1] + DV[d][1] === tc) ?? "N";
-  g.fp = 3.5;
-  g.speed = 30;
-  g.want = null;
-  g.log = [
-    { t: "Du näherst dich einer Kreuzung …" },
-    { t: "Richtig: Zebrastreifen gemeistert.", tone: "good" },
-    { t: "Falsch: +3 Fehlerpunkte", tone: "bad" },
-    { t: "Mit 40 km/h auf die Gefahrenstelle – angemessen: 30. +1 Fehlerpunkt", tone: "bad" },
-    { t: "Richtig: Ampelkreuzung gemeistert.", tone: "good" },
-    { t: "Run gestartet: Mittel. Gib Gas!" },
-  ];
-  if (mode === "ereignis") {
-    g.pos = { r: tr, c: tc };
-    g.visited.push(target);
-    g.active = target;
-    g.speed = 0;
-    g.log.unshift({ t: "Ereignis: Kreuzung!" });
-  }
-  return g;
-}
+export const Engine = { MAP_SIZE, generate_board, new_game, update };

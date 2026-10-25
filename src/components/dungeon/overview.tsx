@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CATS, type Category } from "@/lib/dungeon/catalog";
-import { DIFF, generate, type DiffKey } from "@/lib/dungeon/city";
-import { defaultStats, fmt, hearts, MAX_FP, newRun, pct, type Stats } from "@/lib/dungeon/engine";
-import { act, resetProgress, useDungeon } from "@/lib/dungeon/store";
+import { bbox, demoCity, DIFF } from "@/lib/dungeon/city";
+import type { DiffKey } from "@/lib/dungeon/engine";
+import { defaultStats, fmt, MAX_FP, newRun, pct, totalFP, type Stats } from "@/lib/dungeon/session";
+import { dispatch, resetProgress, useDungeon } from "@/lib/dungeon/store";
 import { PixelMap, pixelBg } from "./pixel-map";
 
 const card = "rounded-2xl border border-navy-100 bg-white p-6 shadow-card dark:border-navy-800 dark:bg-navy-900";
@@ -14,7 +15,11 @@ const btn =
   "inline-flex h-11 w-full items-center justify-center rounded-xl px-5 text-small font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-800 dark:focus-visible:ring-accent";
 
 // Vorschaukarten sind fest (Seed), damit Server und Browser dasselbe zeigen
-const PREVIEWS = (Object.keys(DIFF) as DiffKey[]).map((k, i) => ({ key: k, city: generate(k, 900 + i * 13) }));
+const PREVIEWS = (Object.keys(DIFF) as DiffKey[]).map((k, i) => {
+  const { board } = demoCity(k, 900 + i * 13);
+  const bb = bbox(board);
+  return { key: k, board, aspect: (bb.x1 - bb.x0 + 1) / (bb.y1 - bb.y0 + 1) };
+});
 
 function Ring({ p }: { p: number }) {
   const r = 50;
@@ -58,7 +63,7 @@ export function Overview() {
   const state = useDungeon();
   const router = useRouter();
   const stats = state?.stats ?? defaultStats();
-  const G = state?.run ?? null;
+  const G = state?.session ?? null;
   const live = G && !G.over;
 
   const total = CATS.reduce((a, c) => a + c.total, 0);
@@ -67,7 +72,7 @@ export function Overview() {
   const runs = stats.runs;
 
   const start = (k: DiffKey) => {
-    act((d) => newRun(d, k));
+    dispatch((d) => newRun(d, k));
     router.push("/spiel");
   };
 
@@ -82,8 +87,8 @@ export function Overview() {
           <div>
             <p className="font-semibold">Laufender Run · {DIFF[G.diff].name}</p>
             <p className="text-small text-navy-300">
-              {Object.values(G.events).filter((e) => e.st).length} von {Object.keys(G.events).length} Ereignissen · {fmt(G.fp)} Fehlerpunkte ·{" "}
-              {fmt(hearts(G))} Herzen übrig
+              {Object.values(G.events).filter((e) => e.st).length} von {Object.keys(G.events).length} Ereignissen · {fmt(totalFP(G))} Fehlerpunkte · Zug{" "}
+              {G.state.turn}
             </p>
           </div>
           <Link href="/spiel" className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-accent px-4 text-small font-semibold text-navy-900 hover:bg-cyan-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:ml-auto sm:w-auto">
@@ -163,13 +168,13 @@ export function Overview() {
         <span className="text-small text-navy-500 dark:text-navy-300">Die Stadt wird bei jedem Run neu erzeugt</span>
       </div>
       <div className="grid gap-6 md:grid-cols-3">
-        {PREVIEWS.map(({ key, city }) => {
+        {PREVIEWS.map(({ key, board, aspect }) => {
           const d = DIFF[key];
           return (
             <section key={key} className="flex flex-col overflow-hidden rounded-2xl border border-navy-100 bg-white shadow-card dark:border-navy-800 dark:bg-navy-900">
               <div className="relative grid h-44 place-items-center bg-zinc-950 px-6">
                 <span className={`absolute left-3 top-3 z-30 px-2 py-1 font-pixel-body text-xs text-zinc-950 ring-2 ring-zinc-950 ${d.color}`}>{d.name.toUpperCase()}</span>
-                <PixelMap run={city} player={false} marks={false} label={`Beispielstadt ${d.name}`} className="max-h-40" style={{ maxWidth: `calc(10rem * ${city.w / city.h})` }} />
+                <PixelMap board={board} label={`Beispielstadt ${d.name}`} className="max-h-40" style={{ maxWidth: `calc(10rem * ${aspect})` }} />
               </div>
               <div className="flex flex-1 flex-col p-5">
                 <h3 className="flex items-center gap-2.5 text-h3 text-primary dark:text-white">
@@ -183,8 +188,9 @@ export function Overview() {
                 <p className={sub}>{d.desc}</p>
                 <dl className="mb-4 mt-3 grid flex-1 content-start gap-2 text-small text-navy-600 dark:text-navy-300">
                   {[
-                    ["Stadtgebiet", `${d.w} × ${d.h} Felder`],
+                    ["Stadtgebiet", `${d.size} Felder`],
                     ["Ereignisse", d.events],
+                    ["Andere Autos", d.cars],
                     ["Fehlerpunkte erlaubt", "max. 9"],
                   ].map(([k, v]) => (
                     <div key={k} className="flex justify-between border-b border-dashed border-navy-100 pb-1.5 dark:border-navy-800">

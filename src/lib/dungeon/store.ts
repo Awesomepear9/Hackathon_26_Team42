@@ -1,13 +1,12 @@
 "use client";
 
 // Gemeinsamer Spielstand für Übersicht und Spiel. Gespeichert wird nur lokal im Browser
-// (Schlüssel wie im Prototyp: digifl-run und digifl-stats).
+// (Schlüssel wie im Prototyp, Iteration 3: digifl-session3 und digifl-stats3).
 import { useSyncExternalStore } from "react";
-import type { Run } from "./city";
-import { defaultStats, type Draft, type Stats } from "./engine";
+import { defaultStats, type Draft, type Session, type Stats } from "./session";
 
-const RUN_KEY = "digifl-run";
-const STATS_KEY = "digifl-stats";
+const RUN_KEY = "digifl-session3";
+const STATS_KEY = "digifl-stats3";
 
 function load<T>(key: string, fallback: T): T {
   try {
@@ -30,7 +29,7 @@ let state: Draft | null = null;
 const listeners = new Set<() => void>();
 
 function current(): Draft {
-  state ??= { run: load<Run | null>(RUN_KEY, null), stats: load<Stats>(STATS_KEY, defaultStats()) };
+  state ??= { session: load<Session | null>(RUN_KEY, null), stats: load<Stats>(STATS_KEY, defaultStats()) };
   return state;
 }
 
@@ -40,11 +39,11 @@ function subscribe(listener: () => void) {
 }
 
 /** Führt eine Aktion auf einer Kopie aus, speichert und benachrichtigt */
-export function act(action: (draft: Draft) => void) {
+export function dispatch(action: (draft: Draft) => void) {
   const draft = structuredClone(current());
   action(draft);
   state = draft;
-  save(RUN_KEY, draft.run);
+  save(RUN_KEY, draft.session);
   save(STATS_KEY, draft.stats);
   listeners.forEach((l) => l());
 }
@@ -56,7 +55,7 @@ export function resetProgress() {
   } catch {
     // nichts zu löschen
   }
-  state = { run: null, stats: defaultStats() };
+  state = { session: null, stats: defaultStats() };
   listeners.forEach((l) => l());
 }
 
